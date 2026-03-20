@@ -1,121 +1,558 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>이현준(1972) - 나무위키</title>
-    <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #373a3c; max-width: 1000px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; }
-        .wiki-title { border-bottom: 2px solid #555; padding-bottom: 10px; margin-bottom: 20px; }
-        .wiki-title h1 { margin: 0; font-size: 2.5em; }
-        .infobox { float: right; width: 300px; border: 1px solid #ccc; margin-left: 20px; background: #f9f9f9; font-size: 0.9em; }
-        .infobox-title { background: #373a3c; color: white; text-align: center; padding: 10px; font-weight: bold; }
-        .infobox-image { text-align: center; padding: 10px; background: #fff; }
-        .infobox-table { width: 100%; border-collapse: collapse; }
-        .infobox-table th { background: #eee; width: 35%; text-align: left; padding: 5px; border: 1px solid #ccc; }
-        .infobox-table td { padding: 5px; border: 1px solid #ccc; }
-        .toc { background: #f8f9fa; border: 1px solid #ddd; padding: 15px; display: inline-block; min-width: 200px; margin-bottom: 20px; }
-        .toc h2 { font-size: 1.1em; margin-top: 0; }
-        .wiki-section { margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-        .wiki-section h2 { border-left: 5px solid #373a3c; padding-left: 10px; }
-        .quote { background: #f0f0f0; border-left: 3px solid #ccc; padding: 10px 20px; font-style: italic; margin: 10px 0; }
-        .status-dead { color: #d33; font-weight: bold; }
-        .link { color: #0275d8; text-decoration: none; }
-        .footnote { font-size: 0.8em; color: #777; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>국회의사당 담 넘기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #b9d9ff 0%, #eaf3ff 70%, #f7f9fc 100%);
+      overflow: hidden;
+    }
+    #wrap {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+    canvas {
+      width: min(1100px, 96vw);
+      height: min(700px, 92vh);
+      border-radius: 18px;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.2);
+      background: #dfefff;
+      display: block;
+    }
+    #overlay {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      background: rgba(255,255,255,0.86);
+      color: #1a1a1a;
+      padding: 12px 14px;
+      border-radius: 14px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+      line-height: 1.45;
+      font-size: 14px;
+      max-width: 360px;
+      backdrop-filter: blur(6px);
+    }
+    #overlay b { font-size: 15px; }
+    .kbd {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 8px;
+      background: #1f2937;
+      color: white;
+      font-size: 12px;
+      margin: 0 2px;
+    }
+  </style>
 </head>
 <body>
+  <div id="wrap">
+    <canvas id="game" width="1100" height="700"></canvas>
+  </div>
 
-<div class="wiki-title">
-    <h1>이현준(1972)</h1>
-</div>
+  <div id="overlay">
+    <b>국회의사당 담 넘기</b><br>
+    국회의사당 담을 넘어 이현준을 즉결처형하라!<br>
+    이동: <span class="kbd">←</span><span class="kbd">→</span> 또는 <span class="kbd">A</span><span class="kbd">D</span><br>
+    점프: <span class="kbd">Space</span><br>
+    담 타기: 담에 붙은 상태에서 <span class="kbd">↑</span> 또는 <span class="kbd">W</span><br>
+    재시작: <span class="kbd">R</span>
+  </div>
 
-<div class="infobox">
-    <div class="infobox-title">이현준 (李賢俊)</div>
-    <div class="infobox-image">
-        <div style="width: 150px; height: 180px; background: #ddd; margin: 0 auto; display: flex; align-items: center; justify-content: center; color: #888;">[수감번호 2045]</div>
-        <p style="font-size: 0.8em;">제1심 선고 직후의 모습</p>
-    </div>
-    <table class="infobox-table">
-        <tr><th>출생</th><td>1972년 5월 14일 (53세)</td></tr>
-        <tr><th>출생지</th><td>경상북도 안동시</td></tr>
-        <tr><th>학력</th><td>육군사관학교 (50기)</td></tr>
-        <tr><th>최종 계급</th><td>중장 (육군 제3군단장 / <span style="color:red;">박탈</span>)</td></tr>
-        <tr><th>주요 범죄</th><td>내란수괴, 내란목적살인, 군사반란</td></tr>
-        <tr><th>현재 상태</th><td>수감 중 (무기징역)</td></tr>
-        <tr><th>수용 시설</th><td>안양교도소</td></tr>
-    </table>
-</div>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
 
-<div class="toc">
-    <h2>목차</h2>
-    <ol>
-        <li><a href="#overview" class="link">개요</a></li>
-        <li><a href="#life" class="link">생애</a></li>
-        <li><a href="#crime" class="link">내란 행위: 10.27 청해 사태</a></li>
-        <li><a href="#trial" class="link">재판 및 판결</a></li>
-        <li><a href="#evaluation" class="link">평가 및 여담</a></li>
-    </ol>
-</div>
+    const WORLD = {
+      width: 2400,
+      groundY: 600,
+      gravity: 0.55,
+      friction: 0.86,
+      wallX: 1760,
+      wallTop: 280,
+      wallW: 46,
+      wallH: 320,
+      goalX: 1820,
+      domeX: 1950,
+    };
 
-<div id="overview" class="wiki-section">
-    <h2>1. 개요</h2>
-    <p>
-        대한민국의 전직 군인. 최종 계급은 <b>중장</b>이었으나, 2024년 발생한 이른바 <span class="link"><b>'10.27 청해 사태'</b></span>를 주도한 혐의로 <b>내란수괴</b>로 지목되어 무기징역을 선고받고 장성급 장교로서의 모든 예우를 박탈당했다.
-    </p>
-    <p>
-        현대 대한민국 민주주의 체제를 전복하려 했던 최악의 군사반란 주동자로 평가받으며, 21세기판 하극상의 대명사로 불린다.
-    </p>
-</div>
+    const keys = {};
+    let cameraX = 0;
+    let gameState = 'title'; // title, playing, win
+    let timer = 0;
+    let bestTime = Number(localStorage.getItem('assemblyWallBest') || '9999');
 
-<div id="life" class="wiki-section">
-    <h2>2. 생애</h2>
-    <p>
-        육군사관학교 50기로 임관하여 야전에서 주로 경력을 쌓았다. 작전통으로서 탁월한 능력을 발휘하며 중장까지 초고속 승진했으나, 군 내 사조직인 '청해회(靑海會)'를 조직하여 세력을 확장했다. 당시 군 내부에서는 "이현준이 없으면 작전이 안 돌아간다"는 말이 돌 정도로 신망이 두터웠으나, 그것이 독이 되어 비극적인 결말을 낳았다.
-    </p>
-</div>
+    const player = {
+      x: 120,
+      y: 0,
+      w: 34,
+      h: 58,
+      vx: 0,
+      vy: 0,
+      speed: 0.9,
+      jump: -11.8,
+      onGround: false,
+      onWall: false,
+      facing: 1,
+    };
 
-<div id="crime" class="wiki-section">
-    <h2>3. 내란 행위: 10.27 청해 사태</h2>
-    <p>
-        2024년 10월 27일 새벽, 이현준은 수도방위사령부 일부 세력과 제3군단 산하 직할부대를 동원하여 국방부 본청과 주요 방송사를 기습 점거했다. 명분은 "무능한 정치권으로부터 국가 안보를 수호한다"는 것이었으나, 실상은 자신의 보직 해임 가능성에 반발한 조직적 반란이었다.
-    </p>
-    <ul>
-        <li><b>국방부 점거</b>: 당시 국방부 장관을 인질로 잡고 비상계엄 선포를 강요함.</li>
-        <li><b>교전 발생</b>: 청와대 외곽에서 경비단과 반란군 사이에 국지적 교전이 발생하여 장병 3명이 사망하고 12명이 부상당함.</li>
-        <li><b>진압</b>: 합참의장의 즉각적인 진압 명령과 계엄사령부 수립 거부로 인해 반란 18시간 만에 자진 투항했다.</li>
-    </ul>
-</div>
+    const hazards = [
+      { x: 420, y: WORLD.groundY - 28, w: 60, h: 28, type: 'barrier' },
+      { x: 750, y: WORLD.groundY - 24, w: 70, h: 24, type: 'camera' },
+      { x: 1040, y: WORLD.groundY - 34, w: 56, h: 34, type: 'barrier' },
+      { x: 1320, y: WORLD.groundY - 26, w: 90, h: 26, type: 'spotlight' },
+      { x: 1550, y: WORLD.groundY - 30, w: 70, h: 30, type: 'camera' },
+    ];
 
-<div id="trial" class="wiki-section">
-    <h2>4. 재판 및 판결</h2>
-    <p>
-        서울중앙지방법원 제21형사부(부장판사 김철수)는 이현준에게 다음과 같이 판결했다.
-    </p>
-    <div class="quote">
-        "피고인 이현준은 헌법이 부여한 군의 소명을 망각하고 국헌을 문란하게 하여 민주주의 근간을 흔들었다. 비록 투항하였으나 그 과정에서 발생한 고귀한 장병들의 희생은 되돌릴 수 없다." - 판결문 중 발췌
-    </div>
-    <table class="infobox-table" style="width: 100%;">
-        <tr><th style="width: 20%;">재판</th><th style="width: 20%;">선고 형량</th><th>비고</th></tr>
-        <tr><td>제1심</td><td>사형</td><td>법정 내 소란 발생</td></tr>
-        <tr><td>제2심</td><td>무기징역</td><td>자진 투항 및 참회 인정</td></tr>
-        <tr><td>대법원</td><td>무기징역 확정</td><td>상고 기각</td></tr>
-    </table>
-</div>
+    const benches = [
+      { x: 280, y: WORLD.groundY - 18, w: 100, h: 18 },
+      { x: 900, y: WORLD.groundY - 18, w: 120, h: 18 },
+      { x: 1450, y: WORLD.groundY - 18, w: 120, h: 18 },
+    ];
 
-<div id="evaluation" class="wiki-section">
-    <h2>5. 평가 및 여담</h2>
-    <p>
-        <b>"능력은 탁월했으나 야망이 독이 된 인물"</b>이라는 평가가 지배적이다. 반란 실패 후 청해회 명단이 공개되면서 군 내 대규모 숙청이 이루어졌고, 이로 인해 한동안 전방 사단의 지휘 공백이 생기는 부작용을 낳기도 했다.
-    </p>
-    <ul>
-        <li>사건 직후 그가 애용하던 선글라스와 작전 지시서는 '반란의 기록'으로 분류되어 육군박물관 비공개 수장고에 보관 중이다.</li>
-        <li>수감 생활 중에도 군사 서적을 집필하려 했으나 교도소 측에 의해 제지당했다고 전해진다.</li>
-    </ul>
-</div>
+    function resetGame() {
+      player.x = 120;
+      player.y = WORLD.groundY - player.h;
+      player.vx = 0;
+      player.vy = 0;
+      player.onGround = true;
+      player.onWall = false;
+      player.facing = 1;
+      cameraX = 0;
+      timer = 0;
+      gameState = 'playing';
+    }
 
-<p class="footnote" style="margin-top: 50px;">
-    [출처: 가상 역사 기록물 '청해 사태 백서(2025)', 서울지방법원 판결문 제2024고합1204]
-</p>
+    window.addEventListener('keydown', (e) => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.code === 'Space') keys.space = true;
 
+      if (gameState === 'title' && (e.code === 'Space' || e.key.toLowerCase() === 'enter')) {
+        resetGame();
+      }
+
+      if (e.key.toLowerCase() === 'r') {
+        resetGame();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.key.toLowerCase()] = false;
+      if (e.code === 'Space') keys.space = false;
+    });
+
+    function rectsOverlap(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function respawn() {
+      player.x = Math.max(120, player.x - 150);
+      player.y = WORLD.groundY - player.h;
+      player.vx = 0;
+      player.vy = 0;
+    }
+
+    function update() {
+      if (gameState !== 'playing') return;
+
+      timer += 1 / 60;
+
+      const left = keys['arrowleft'] || keys['a'];
+      const right = keys['arrowright'] || keys['d'];
+      const up = keys['arrowup'] || keys['w'];
+
+      if (left) {
+        player.vx -= player.speed;
+        player.facing = -1;
+      }
+      if (right) {
+        player.vx += player.speed;
+        player.facing = 1;
+      }
+
+      if (!left && !right) player.vx *= WORLD.friction;
+      player.vx = Math.max(-6, Math.min(6, player.vx));
+
+      const touchingWallFront =
+        player.x + player.w >= WORLD.wallX &&
+        player.x + player.w <= WORLD.wallX + WORLD.wallW + 10 &&
+        player.y + player.h > WORLD.wallTop + 10 &&
+        player.y < WORLD.groundY;
+
+      player.onWall = false;
+      if (!player.onGround && touchingWallFront && player.facing === 1) {
+        player.onWall = true;
+        if (player.vy > 1.5) player.vy = 1.5;
+        if (up) player.vy = -4.3;
+        if (keys.space) {
+          player.vy = -9.2;
+          player.vx = -5.5;
+        }
+      }
+
+      if (keys.space && player.onGround) {
+        player.vy = player.jump;
+        player.onGround = false;
+      }
+
+      player.vy += WORLD.gravity;
+      player.x += player.vx;
+      player.y += player.vy;
+
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.w > WORLD.width) player.x = WORLD.width - player.w;
+
+      player.onGround = false;
+
+      // Ground
+      if (player.y + player.h >= WORLD.groundY) {
+        player.y = WORLD.groundY - player.h;
+        player.vy = 0;
+        player.onGround = true;
+      }
+
+      // Benches
+      for (const b of benches) {
+        if (
+          player.x + player.w > b.x &&
+          player.x < b.x + b.w &&
+          player.y + player.h >= b.y &&
+          player.y + player.h <= b.y + 20 &&
+          player.vy >= 0
+        ) {
+          player.y = b.y - player.h;
+          player.vy = 0;
+          player.onGround = true;
+        }
+      }
+
+      // Wall collision
+      if (
+        player.x + player.w > WORLD.wallX &&
+        player.x < WORLD.wallX + WORLD.wallW &&
+        player.y + player.h > WORLD.wallTop
+      ) {
+        // top landing
+        if (player.y + player.h <= WORLD.wallTop + 30 && player.vy >= 0) {
+          player.y = WORLD.wallTop - player.h;
+          player.vy = 0;
+          player.onGround = true;
+        } else if (player.x < WORLD.wallX && player.vx > 0) {
+          player.x = WORLD.wallX - player.w;
+          player.vx = 0;
+        } else if (player.x > WORLD.wallX && player.vx < 0) {
+          player.x = WORLD.wallX + WORLD.wallW;
+          player.vx = 0;
+        }
+      }
+
+      // Hazards
+      for (const hz of hazards) {
+        if (rectsOverlap(player, hz)) {
+          respawn();
+        }
+      }
+
+      // Pit after wall if player falls badly
+      if (player.y > canvas.height + 200) {
+        respawn();
+      }
+
+      // Goal
+      if (player.x > WORLD.goalX && player.y + player.h <= WORLD.wallTop + 10) {
+        gameState = 'win';
+        if (timer < bestTime) {
+          bestTime = timer;
+          localStorage.setItem('assemblyWallBest', String(bestTime));
+        }
+      }
+
+      cameraX = player.x - canvas.width * 0.35;
+      cameraX = Math.max(0, Math.min(WORLD.width - canvas.width, cameraX));
+    }
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function drawBackground() {
+      // Sky gradient
+      const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      g.addColorStop(0, '#b8dcff');
+      g.addColorStop(1, '#f7fbff');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Clouds
+      for (let i = 0; i < 7; i++) {
+        const x = ((i * 260 - cameraX * 0.25) % 1500) - 120;
+        const y = 90 + (i % 3) * 45;
+        drawCloud(x, y, 0.9 + (i % 2) * 0.2);
+      }
+
+      // Distant city
+      for (let i = 0; i < 16; i++) {
+        const x = i * 90 - (cameraX * 0.45 % 90);
+        const h = 120 + (i % 5) * 25;
+        ctx.fillStyle = '#99abc0';
+        ctx.fillRect(x, 350 - h, 60, h);
+      }
+
+      // Assembly dome + building
+      const bx = WORLD.domeX - cameraX;
+      ctx.fillStyle = '#d4dbe4';
+      ctx.fillRect(bx - 170, 390, 340, 150);
+      ctx.fillStyle = '#8eb845';
+      for (let i = 0; i < 12; i++) {
+        ctx.fillRect(bx - 148 + i * 28, 410, 14, 130);
+      }
+      ctx.beginPath();
+      ctx.arc(bx, 350, 90, Math.PI, 0);
+      ctx.closePath();
+      ctx.fillStyle = '#59a44e';
+      ctx.fill();
+      ctx.fillStyle = '#c4d2dd';
+      ctx.fillRect(bx - 120, 382, 240, 18);
+
+      // Grass
+      ctx.fillStyle = '#78b159';
+      ctx.fillRect(0, WORLD.groundY - 4, canvas.width, canvas.height - WORLD.groundY + 4);
+      ctx.fillStyle = '#66994c';
+      for (let i = 0; i < canvas.width; i += 22) {
+        ctx.fillRect(i, WORLD.groundY + (i % 3), 12, 5);
+      }
+    }
+
+    function drawCloud(x, y, s) {
+      ctx.fillStyle = 'rgba(255,255,255,0.82)';
+      ctx.beginPath();
+      ctx.arc(x, y, 28 * s, 0, Math.PI * 2);
+      ctx.arc(x + 30 * s, y - 10 * s, 24 * s, 0, Math.PI * 2);
+      ctx.arc(x + 56 * s, y, 28 * s, 0, Math.PI * 2);
+      ctx.arc(x + 26 * s, y + 10 * s, 30 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawGroundElements() {
+      // Benches
+      for (const b of benches) {
+        const x = b.x - cameraX;
+        ctx.fillStyle = '#8f5b2e';
+        ctx.fillRect(x, b.y, b.w, b.h);
+        ctx.fillRect(x + 10, b.y + b.h, 10, 20);
+        ctx.fillRect(x + b.w - 20, b.y + b.h, 10, 20);
+      }
+
+      // Hazards
+      for (const hz of hazards) {
+        const x = hz.x - cameraX;
+        if (hz.type === 'barrier') {
+          ctx.fillStyle = '#d64545';
+          ctx.fillRect(x, hz.y, hz.w, hz.h);
+          ctx.fillStyle = '#ffffff';
+          for (let i = 0; i < hz.w; i += 14) ctx.fillRect(x + i, hz.y + 7, 7, 8);
+        } else if (hz.type === 'camera') {
+          ctx.fillStyle = '#4b5563';
+          ctx.fillRect(x + 18, hz.y - 18, 12, hz.h + 18);
+          ctx.fillStyle = '#222';
+          ctx.fillRect(x, hz.y, hz.w, hz.h);
+          ctx.fillStyle = '#7dd3fc';
+          ctx.fillRect(x + 10, hz.y + 10, hz.w - 20, 10);
+        } else if (hz.type === 'spotlight') {
+          ctx.fillStyle = '#444';
+          ctx.fillRect(x + hz.w/2 - 6, hz.y - 50, 12, 50);
+          ctx.beginPath();
+          ctx.moveTo(x + hz.w/2, hz.y - 50);
+          ctx.lineTo(x + hz.w/2 - 60, hz.y + hz.h);
+          ctx.lineTo(x + hz.w/2 + 60, hz.y + hz.h);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(255, 244, 180, 0.35)';
+          ctx.fill();
+        }
+      }
+
+      // Wall
+      const wx = WORLD.wallX - cameraX;
+      ctx.fillStyle = '#8a8f98';
+      ctx.fillRect(wx, WORLD.wallTop, WORLD.wallW, WORLD.wallH);
+      ctx.fillStyle = '#777d87';
+      for (let y = WORLD.wallTop + 10; y < WORLD.groundY; y += 22) {
+        ctx.fillRect(wx + 5, y, WORLD.wallW - 10, 8);
+      }
+      ctx.fillStyle = '#6b7280';
+      ctx.fillRect(wx - 20, WORLD.wallTop - 8, WORLD.wallW + 40, 10);
+
+      // Goal marker
+      const gx = WORLD.goalX - cameraX;
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(gx, WORLD.wallTop - 70);
+      ctx.lineTo(gx, WORLD.wallTop);
+      ctx.stroke();
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(gx, WORLD.wallTop - 70);
+      ctx.lineTo(gx + 40, WORLD.wallTop - 55);
+      ctx.lineTo(gx, WORLD.wallTop - 40);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawPlayer() {
+      const x = player.x - cameraX;
+      const y = player.y;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.beginPath();
+      ctx.ellipse(x + player.w / 2, WORLD.groundY + 4, 18, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Body
+      ctx.fillStyle = '#1f4c8f';
+      roundRect(x + 5, y + 18, 24, 28, 8);
+      ctx.fill();
+
+      // Head
+      ctx.fillStyle = '#f1c27d';
+      ctx.beginPath();
+      ctx.arc(x + 17, y + 12, 11, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Hair
+      ctx.fillStyle = '#2f2b2a';
+      ctx.beginPath();
+      ctx.arc(x + 17, y + 9, 11, Math.PI, 0);
+      ctx.fill();
+
+      // Legs
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(x + 12, y + 46);
+      ctx.lineTo(x + 10 + Math.sin(timer * 8) * 4, y + 58);
+      ctx.moveTo(x + 22, y + 46);
+      ctx.lineTo(x + 24 - Math.sin(timer * 8) * 4, y + 58);
+      ctx.stroke();
+
+      // Arms
+      ctx.beginPath();
+      ctx.moveTo(x + 5, y + 30);
+      ctx.lineTo(x - 2 + player.facing * 2, y + 40);
+      ctx.moveTo(x + 29, y + 30);
+      ctx.lineTo(x + 36 + player.facing * 3, y + 40);
+      ctx.stroke();
+
+      // Tie
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.moveTo(x + 17, y + 22);
+      ctx.lineTo(x + 13, y + 35);
+      ctx.lineTo(x + 21, y + 35);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawHUD() {
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      roundRect(20, 20, 260, 88, 18);
+      ctx.fill();
+
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 22px system-ui';
+      ctx.fillText('담 넘기 작전', 36, 52);
+      ctx.font = '16px system-ui';
+      ctx.fillText(`현재 기록: ${timer.toFixed(2)}초`, 36, 78);
+      ctx.fillText(`최고 기록: ${bestTime === 9999 ? '-' : bestTime.toFixed(2) + '초'}`, 36, 100);
+    }
+
+    function drawTitleScreen() {
+      drawBackground();
+      drawGroundElements();
+
+      ctx.fillStyle = 'rgba(9, 16, 32, 0.55)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 54px system-ui';
+      ctx.fillText('국회의사당 담 넘기', canvas.width / 2, 190);
+      ctx.font = '24px system-ui';
+      ctx.fillText('브라우저에서 바로 실행되는 풍자용 2D 미니게임', canvas.width / 2, 240);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      roundRect(canvas.width / 2 - 245, 300, 490, 190, 22);
+      ctx.fill();
+
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 26px system-ui';
+      ctx.fillText('목표', canvas.width / 2, 348);
+      ctx.font = '20px system-ui';
+      ctx.fillText('장애물을 피해 달려가 담을 타고 정상에 도달하세요.', canvas.width / 2, 390);
+      ctx.fillText('빨간 깃발 지점에 서면 클리어입니다.', canvas.width / 2, 425);
+      ctx.fillText('시작: Space 또는 Enter', canvas.width / 2, 465);
+    }
+
+    function drawWinScreen() {
+      ctx.fillStyle = 'rgba(0,0,0,0.38)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(255,255,255,0.94)';
+      roundRect(canvas.width / 2 - 250, 180, 500, 240, 24);
+      ctx.fill();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 48px system-ui';
+      ctx.fillText('클리어!', canvas.width / 2, 255);
+      ctx.font = '24px system-ui';
+      ctx.fillText(`기록: ${timer.toFixed(2)}초`, canvas.width / 2, 310);
+      ctx.fillText(`최고 기록: ${bestTime.toFixed(2)}초`, canvas.width / 2, 348);
+      ctx.font = '20px system-ui';
+      ctx.fillText('R 키를 누르면 다시 시작합니다.', canvas.width / 2, 388);
+      ctx.textAlign = 'left';
+    }
+
+    function draw() {
+      if (gameState === 'title') {
+        drawTitleScreen();
+        return;
+      }
+
+      drawBackground();
+      drawGroundElements();
+      drawPlayer();
+      drawHUD();
+
+      if (gameState === 'win') drawWinScreen();
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    player.y = WORLD.groundY - player.h;
+    loop();
+  </script>
 </body>
 </html>
