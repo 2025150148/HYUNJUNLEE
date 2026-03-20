@@ -1,171 +1,337 @@
-<!DOCTYPE html>
-<html lang="ko">
+<!DOCTYPE html><html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>국회의사당 담 넘기</title>
+  <title>국회의사당 담 넘기 DX</title>
   <style>
     * { box-sizing: border-box; }
-    body {
+    html, body {
       margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: linear-gradient(180deg, #b9d9ff 0%, #eaf3ff 70%, #f7f9fc 100%);
+      width: 100%;
+      height: 100%;
       overflow: hidden;
+      background: #0b1220;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     #wrap {
       width: 100vw;
       height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px;
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(94, 150, 255, 0.20), transparent 28%),
+        radial-gradient(circle at 80% 10%, rgba(126, 231, 135, 0.16), transparent 22%),
+        linear-gradient(180deg, #16223d 0%, #0d1528 100%);
     }
     canvas {
-      width: min(1100px, 96vw);
-      height: min(700px, 92vh);
-      border-radius: 18px;
-      box-shadow: 0 18px 50px rgba(0,0,0,0.2);
-      background: #dfefff;
+      width: min(1280px, 98vw);
+      height: min(760px, 95vh);
+      border-radius: 24px;
+      box-shadow: 0 28px 70px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.05);
       display: block;
+      background: linear-gradient(180deg, #9bcaff 0%, #eef7ff 62%, #f9fbff 100%);
     }
-    #overlay {
+    #hint {
       position: fixed;
-      top: 18px;
-      left: 18px;
-      background: rgba(255,255,255,0.86);
-      color: #1a1a1a;
+      right: 16px;
+      top: 16px;
+      background: rgba(10, 18, 35, 0.72);
+      color: #eef4ff;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 16px;
       padding: 12px 14px;
-      border-radius: 14px;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.12);
       line-height: 1.45;
-      font-size: 14px;
-      max-width: 360px;
-      backdrop-filter: blur(6px);
+      font-size: 13px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+      user-select: none;
+      max-width: 320px;
     }
-    #overlay b { font-size: 15px; }
     .kbd {
       display: inline-block;
+      min-width: 22px;
+      text-align: center;
       padding: 2px 8px;
+      margin: 0 1px;
       border-radius: 8px;
-      background: #1f2937;
-      color: white;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: #fff;
       font-size: 12px;
-      margin: 0 2px;
+      font-weight: 700;
     }
   </style>
 </head>
 <body>
   <div id="wrap">
-    <canvas id="game" width="1100" height="700"></canvas>
-  </div>
-
-  <div id="overlay">
-    <b>국회의사당 담 넘기</b><br>
-    국회의사당 담을 넘어 이현준을 즉결처형하라!<br>
-    이동: <span class="kbd">←</span><span class="kbd">→</span> 또는 <span class="kbd">A</span><span class="kbd">D</span><br>
-    점프: <span class="kbd">Space</span><br>
-    담 타기: 담에 붙은 상태에서 <span class="kbd">↑</span> 또는 <span class="kbd">W</span><br>
-    재시작: <span class="kbd">R</span>
-  </div>
-
-  <script>
+    <canvas id="game" width="1280" height="760"></canvas>
+  </div>  <div id="hint">
+    <div><b>국회의사당 담 넘기 DX</b></div>
+    이동 <span class="kbd">←</span><span class="kbd">→</span> / <span class="kbd">A</span><span class="kbd">D</span></div>
+    <div>점프 <span class="kbd">Space</span> / <span class="kbd">↑</span></div>
+    <div>대시 <span class="kbd">Shift</span></div>
+    <div>재시작 <span class="kbd">R</span></div>
+  </div>  <script>
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
 
+    const W = canvas.width;
+    const H = canvas.height;
+
     const WORLD = {
-      width: 2400,
-      groundY: 600,
-      gravity: 0.55,
-      friction: 0.86,
-      wallX: 1760,
-      wallTop: 280,
-      wallW: 46,
-      wallH: 320,
-      goalX: 1820,
-      domeX: 1950,
+      width: 4100,
+      groundY: 655,
+      gravity: 0.58,
+      wind: 0,
+      wallX: 3340,
+      wallTop: 290,
+      wallW: 58,
+      wallH: 365,
+      goalX: 3495,
+      domeX: 3640,
     };
 
     const keys = {};
-    let cameraX = 0;
     let gameState = 'title'; // title, playing, win
+    let cameraX = 0;
     let timer = 0;
-    let bestTime = Number(localStorage.getItem('assemblyWallBest') || '9999');
+    let bestTime = Number(localStorage.getItem('assemblyWallDXBest') || '99999');
+    let bestFans = Number(localStorage.getItem('assemblyWallDXFans') || '0');
+    let checkpoint = { x: 120, y: WORLD.groundY - 58 };
+    let screenShake = 0;
+    let flash = 0;
+    let particles = [];
+    let floatingTexts = [];
+    let lastTime = 0;
+
+    const palette = {
+      navy: '#163463',
+      blue: '#2d6cdf',
+      sky: '#9ecbff',
+      grass: '#70b35c',
+      grassDark: '#588f44',
+      stone: '#8a919c',
+      stoneDark: '#6f7680',
+      gold: '#ffd24a',
+      danger: '#ef4444',
+      good: '#34d399',
+      ink: '#0f172a',
+    };
 
     const player = {
       x: 120,
-      y: 0,
+      y: WORLD.groundY - 58,
       w: 34,
       h: 58,
       vx: 0,
       vy: 0,
-      speed: 0.9,
-      jump: -11.8,
+      speed: 0.95,
+      maxSpeed: 6.7,
+      jumpPower: -12.2,
       onGround: false,
       onWall: false,
       facing: 1,
+      canDoubleJump: true,
+      dashCooldown: 0,
+      dashTime: 0,
+      lives: 3,
+      energy: 100,
+      maxEnergy: 100,
+      alert: 0,
+      invuln: 0,
+      fans: 0,
+      hitCount: 0,
     };
 
+    const platforms = [
+      { x: 260, y: 595, w: 90, h: 16, style: 'bench' },
+      { x: 520, y: 560, w: 140, h: 16, style: 'railing' },
+      { x: 760, y: 520, w: 120, h: 16, style: 'bench' },
+      { x: 1080, y: 590, w: 140, h: 18, style: 'truck' },
+      { x: 1320, y: 540, w: 120, h: 16, style: 'railing' },
+      { x: 1610, y: 505, w: 135, h: 16, style: 'bench' },
+      { x: 1940, y: 555, w: 150, h: 16, style: 'railing' },
+      { x: 2240, y: 510, w: 120, h: 16, style: 'bench' },
+      { x: 2480, y: 470, w: 115, h: 16, style: 'cameraBox' },
+      { x: 2760, y: 420, w: 140, h: 16, style: 'bench' },
+      { x: 3010, y: 370, w: 130, h: 16, style: 'railing' },
+      { x: WORLD.wallX - 110, y: WORLD.wallTop + 120, w: 58, h: 12, style: 'ledge' },
+      { x: WORLD.wallX + 85, y: WORLD.wallTop + 50, w: 70, h: 12, style: 'ledge' },
+      { x: WORLD.goalX, y: WORLD.wallTop - 14, w: 95, h: 14, style: 'goal' },
+    ];
+
+    const checkpoints = [
+      { x: 1120, y: WORLD.groundY - 58, active: false },
+      { x: 2390, y: WORLD.groundY - 58, active: false },
+      { x: WORLD.wallX - 100, y: WORLD.groundY - 58, active: false },
+    ];
+
     const hazards = [
-      { x: 420, y: WORLD.groundY - 28, w: 60, h: 28, type: 'barrier' },
-      { x: 750, y: WORLD.groundY - 24, w: 70, h: 24, type: 'camera' },
-      { x: 1040, y: WORLD.groundY - 34, w: 56, h: 34, type: 'barrier' },
-      { x: 1320, y: WORLD.groundY - 26, w: 90, h: 26, type: 'spotlight' },
-      { x: 1550, y: WORLD.groundY - 30, w: 70, h: 30, type: 'camera' },
+      { type: 'barrier', x: 430, y: WORLD.groundY - 28, w: 66, h: 28 },
+      { type: 'camera', x: 905, y: WORLD.groundY - 44, w: 56, h: 44, range: 130, t: 0 },
+      { type: 'spotlight', x: 1430, y: WORLD.groundY - 185, w: 24, h: 185, angle: -0.8, sweep: 0.9, speed: 0.012, t: 0 },
+      { type: 'barrier', x: 1710, y: WORLD.groundY - 30, w: 76, h: 30 },
+      { type: 'drone', x: 2100, y: 455, w: 52, h: 22, baseY: 455, amp: 80, speed: 0.022, t: 0 },
+      { type: 'spotlight', x: 2595, y: WORLD.groundY - 230, w: 24, h: 230, angle: -1.0, sweep: 1.2, speed: 0.015, t: 2.3 },
+      { type: 'camera', x: 3110, y: 330, w: 56, h: 44, range: 120, t: 1.3 },
     ];
 
-    const benches = [
-      { x: 280, y: WORLD.groundY - 18, w: 100, h: 18 },
-      { x: 900, y: WORLD.groundY - 18, w: 120, h: 18 },
-      { x: 1450, y: WORLD.groundY - 18, w: 120, h: 18 },
+    const pickups = [
+      { x: 315, y: 552, r: 12, taken: false },
+      { x: 615, y: 512, r: 12, taken: false },
+      { x: 835, y: 472, r: 12, taken: false },
+      { x: 1180, y: 548, r: 12, taken: false },
+      { x: 1378, y: 500, r: 12, taken: false },
+      { x: 1680, y: 465, r: 12, taken: false },
+      { x: 2010, y: 520, r: 12, taken: false },
+      { x: 2275, y: 475, r: 12, taken: false },
+      { x: 2518, y: 435, r: 12, taken: false },
+      { x: 2820, y: 382, r: 12, taken: false },
+      { x: 3058, y: 330, r: 12, taken: false },
+      { x: WORLD.goalX + 45, y: WORLD.wallTop - 48, r: 12, taken: false },
     ];
 
-    function resetGame() {
+    function resetGame(full = true) {
       player.x = 120;
       player.y = WORLD.groundY - player.h;
       player.vx = 0;
       player.vy = 0;
+      player.facing = 1;
       player.onGround = true;
       player.onWall = false;
-      player.facing = 1;
-      cameraX = 0;
+      player.canDoubleJump = true;
+      player.dashCooldown = 0;
+      player.dashTime = 0;
+      player.lives = 3;
+      player.energy = 100;
+      player.alert = 0;
+      player.invuln = 0;
+      player.fans = 0;
+      player.hitCount = 0;
       timer = 0;
-      gameState = 'playing';
+      cameraX = 0;
+      checkpoint = { x: 120, y: WORLD.groundY - player.h };
+      screenShake = 0;
+      flash = 0;
+      particles = [];
+      floatingTexts = [];
+      for (const p of pickups) p.taken = false;
+      for (const c of checkpoints) c.active = false;
+      if (full) gameState = 'playing';
+    }
+
+    function respawn(reason = '경보 발각') {
+      spawnBurst(player.x + player.w / 2, player.y + player.h / 2, 18, '#ff6b6b');
+      addFloat(reason, player.x, player.y - 16, '#ff8b8b');
+      player.x = checkpoint.x;
+      player.y = checkpoint.y;
+      player.vx = 0;
+      player.vy = 0;
+      player.energy = 100;
+      player.alert = 0;
+      player.invuln = 70;
+      player.dashTime = 0;
+      player.canDoubleJump = true;
+      player.onGround = false;
+      screenShake = 8;
+      flash = 0.25;
+    }
+
+    function damage(reason = '충돌') {
+      if (player.invuln > 0) return;
+      player.lives -= 1;
+      player.hitCount += 1;
+      if (player.lives <= 0) {
+        resetGame(false);
+        gameState = 'title';
+        addFloat('작전 실패', checkpoint.x, checkpoint.y - 20, '#ffd0d0');
+        return;
+      }
+      respawn(reason);
     }
 
     window.addEventListener('keydown', (e) => {
-      keys[e.key.toLowerCase()] = true;
+      const k = e.key.toLowerCase();
+      keys[k] = true;
       if (e.code === 'Space') keys.space = true;
+      if (e.key === 'Shift') keys.shift = true;
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
 
-      if (gameState === 'title' && (e.code === 'Space' || e.key.toLowerCase() === 'enter')) {
+      if (gameState === 'title' && (e.code === 'Space' || k === 'enter')) {
         resetGame();
       }
-
-      if (e.key.toLowerCase() === 'r') {
+      if (k === 'r') {
         resetGame();
       }
-    });
+      if (gameState === 'win' && (e.code === 'Space' || k === 'enter')) {
+        resetGame();
+      }
+    }, { passive: false });
 
     window.addEventListener('keyup', (e) => {
-      keys[e.key.toLowerCase()] = false;
+      const k = e.key.toLowerCase();
+      keys[k] = false;
       if (e.code === 'Space') keys.space = false;
+      if (e.key === 'Shift') keys.shift = false;
     });
 
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    function lerp(a, b, t) { return a + (b - a) * t; }
     function rectsOverlap(a, b) {
       return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
     }
-
-    function respawn() {
-      player.x = Math.max(120, player.x - 150);
-      player.y = WORLD.groundY - player.h;
-      player.vx = 0;
-      player.vy = 0;
+    function pointInRect(px, py, r) {
+      return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+    }
+    function dist(ax, ay, bx, by) {
+      return Math.hypot(ax - bx, ay - by);
     }
 
-    function update() {
-      if (gameState !== 'playing') return;
+    function spawnBurst(x, y, count = 12, color = '#ffffff') {
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = 1 + Math.random() * 4.5;
+        particles.push({
+          x, y,
+          vx: Math.cos(a) * s,
+          vy: Math.sin(a) * s - 0.6,
+          life: 25 + Math.random() * 25,
+          maxLife: 40,
+          color,
+          size: 2 + Math.random() * 4,
+          gravity: 0.08 + Math.random() * 0.06,
+        });
+      }
+    }
 
-      timer += 1 / 60;
+    function addFloat(text, x, y, color = '#fff') {
+      floatingTexts.push({ text, x, y, life: 60, color });
+    }
 
+    function applyCheckpoint() {
+      for (const c of checkpoints) {
+        if (!c.active && Math.abs(player.x - c.x) < 28 && Math.abs(player.y - c.y) < 80) {
+          c.active = true;
+          checkpoint = { x: c.x, y: c.y };
+          spawnBurst(c.x + 10, c.y + 20, 16, '#5eead4');
+          addFloat('체크포인트!', c.x - 10, c.y - 14, '#8ef0e8');
+        }
+      }
+    }
+
+    function doDash() {
+      if (player.dashCooldown > 0 || player.dashTime > 0) return;
+      const dir = (keys['arrowleft'] || keys['a']) ? -1 : (keys['arrowright'] || keys['d']) ? 1 : player.facing;
+      player.facing = dir;
+      player.dashTime = 8;
+      player.dashCooldown = 48;
+      player.vx = dir * 13.5;
+      player.vy *= 0.35;
+      spawnBurst(player.x + player.w / 2, player.y + player.h / 2, 18, '#93c5fd');
+    }
+
+    function updatePlayer() {
       const left = keys['arrowleft'] || keys['a'];
       const right = keys['arrowright'] || keys['d'];
       const up = keys['arrowup'] || keys['w'];
@@ -178,106 +344,249 @@
         player.vx += player.speed;
         player.facing = 1;
       }
+      if (!left && !right && player.dashTime <= 0) player.vx *= 0.84;
 
-      if (!left && !right) player.vx *= WORLD.friction;
-      player.vx = Math.max(-6, Math.min(6, player.vx));
+      if (keys.shift && player.dashCooldown <= 0) {
+        doDash();
+      }
 
-      const touchingWallFront =
-        player.x + player.w >= WORLD.wallX &&
-        player.x + player.w <= WORLD.wallX + WORLD.wallW + 10 &&
-        player.y + player.h > WORLD.wallTop + 10 &&
-        player.y < WORLD.groundY;
+      player.vx = clamp(player.vx, -player.maxSpeed, player.maxSpeed);
+
+      if (keys.space && player.onGround) {
+        player.vy = player.jumpPower;
+        player.onGround = false;
+        player.canDoubleJump = true;
+        spawnBurst(player.x + player.w / 2, player.y + player.h, 8, '#ffffff');
+        keys.space = false;
+      } else if (keys.space && !player.onGround && player.canDoubleJump && !player.onWall) {
+        player.vy = -10.6;
+        player.canDoubleJump = false;
+        spawnBurst(player.x + player.w / 2, player.y + player.h / 2, 14, '#fde68a');
+        addFloat('더블 점프', player.x - 10, player.y - 12, '#ffe08a');
+        keys.space = false;
+      }
 
       player.onWall = false;
-      if (!player.onGround && touchingWallFront && player.facing === 1) {
-        player.onWall = true;
-        if (player.vy > 1.5) player.vy = 1.5;
-        if (up) player.vy = -4.3;
-        if (keys.space) {
-          player.vy = -9.2;
-          player.vx = -5.5;
+      const frontSense = {
+        x: player.facing === 1 ? player.x + player.w : player.x - 4,
+        y: player.y + 8,
+        w: 4,
+        h: player.h - 12,
+      };
+
+      const wallRects = [
+        { x: WORLD.wallX, y: WORLD.wallTop, w: WORLD.wallW, h: WORLD.wallH },
+        { x: WORLD.wallX - 110, y: WORLD.wallTop + 120, w: 58, h: 12 },
+        { x: WORLD.wallX + 85, y: WORLD.wallTop + 50, w: 70, h: 12 },
+      ];
+
+      for (const wr of wallRects) {
+        if (!player.onGround && rectsOverlap(frontSense, wr) && player.energy > 0) {
+          player.onWall = true;
+          if (player.vy > 1.8) player.vy = 1.8;
+          if (up) {
+            player.vy = -2.8;
+            player.energy = clamp(player.energy - 0.55, 0, player.maxEnergy);
+            if (Math.random() < 0.12) spawnBurst(player.x + player.w / 2, player.y + player.h / 2, 2, '#d1d5db');
+          }
+          if (keys.space) {
+            player.vy = -10.3;
+            player.vx = -player.facing * 7.8;
+            player.canDoubleJump = true;
+            keys.space = false;
+            spawnBurst(player.x + player.w / 2, player.y + player.h / 2, 12, '#bfdbfe');
+          }
+          break;
         }
       }
 
-      if (keys.space && player.onGround) {
-        player.vy = player.jump;
-        player.onGround = false;
-      }
+      if (!player.onWall && player.onGround) player.energy = clamp(player.energy + 0.9, 0, player.maxEnergy);
+      if (!player.onWall && !player.onGround) player.energy = clamp(player.energy + 0.18, 0, player.maxEnergy);
 
-      player.vy += WORLD.gravity;
+      if (player.dashTime > 0) {
+        player.dashTime -= 1;
+        player.vy *= 0.85;
+      } else {
+        player.vy += WORLD.gravity;
+      }
+      player.dashCooldown = Math.max(0, player.dashCooldown - 1);
+      player.invuln = Math.max(0, player.invuln - 1);
+
       player.x += player.vx;
       player.y += player.vy;
 
-      if (player.x < 0) player.x = 0;
-      if (player.x + player.w > WORLD.width) player.x = WORLD.width - player.w;
+      player.x = clamp(player.x, 0, WORLD.width - player.w);
 
-      player.onGround = false;
+      let grounded = false;
 
-      // Ground
       if (player.y + player.h >= WORLD.groundY) {
         player.y = WORLD.groundY - player.h;
         player.vy = 0;
-        player.onGround = true;
+        grounded = true;
+        player.canDoubleJump = true;
       }
 
-      // Benches
-      for (const b of benches) {
-        if (
-          player.x + player.w > b.x &&
-          player.x < b.x + b.w &&
-          player.y + player.h >= b.y &&
-          player.y + player.h <= b.y + 20 &&
-          player.vy >= 0
-        ) {
-          player.y = b.y - player.h;
+      for (const p of platforms) {
+        const wasAbove = player.y + player.h - player.vy <= p.y + 2;
+        if (player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h >= p.y && player.y + player.h <= p.y + 18 && player.vy >= 0 && wasAbove) {
+          player.y = p.y - player.h;
           player.vy = 0;
-          player.onGround = true;
+          grounded = true;
+          player.canDoubleJump = true;
         }
       }
 
-      // Wall collision
-      if (
-        player.x + player.w > WORLD.wallX &&
-        player.x < WORLD.wallX + WORLD.wallW &&
-        player.y + player.h > WORLD.wallTop
-      ) {
-        // top landing
-        if (player.y + player.h <= WORLD.wallTop + 30 && player.vy >= 0) {
-          player.y = WORLD.wallTop - player.h;
-          player.vy = 0;
-          player.onGround = true;
-        } else if (player.x < WORLD.wallX && player.vx > 0) {
-          player.x = WORLD.wallX - player.w;
-          player.vx = 0;
-        } else if (player.x > WORLD.wallX && player.vx < 0) {
-          player.x = WORLD.wallX + WORLD.wallW;
-          player.vx = 0;
+      const solidWalls = [
+        { x: WORLD.wallX, y: WORLD.wallTop, w: WORLD.wallW, h: WORLD.wallH },
+        { x: WORLD.wallX - 110, y: WORLD.wallTop + 120, w: 58, h: 12 },
+        { x: WORLD.wallX + 85, y: WORLD.wallTop + 50, w: 70, h: 12 },
+      ];
+
+      for (const s of solidWalls) {
+        if (rectsOverlap(player, s)) {
+          const prevX = player.x - player.vx;
+          const prevY = player.y - player.vy;
+          const prev = { x: prevX, y: prevY, w: player.w, h: player.h };
+          if (prev.y + prev.h <= s.y + 2) {
+            player.y = s.y - player.h;
+            player.vy = 0;
+            grounded = true;
+            player.canDoubleJump = true;
+          } else if (prev.x + prev.w <= s.x + 2) {
+            player.x = s.x - player.w;
+            player.vx = Math.min(0, player.vx);
+          } else if (prev.x >= s.x + s.w - 2) {
+            player.x = s.x + s.w;
+            player.vx = Math.max(0, player.vx);
+          } else if (prev.y >= s.y + s.h - 2) {
+            player.y = s.y + s.h;
+            player.vy = Math.max(0, player.vy);
+          }
         }
       }
 
-      // Hazards
-      for (const hz of hazards) {
-        if (rectsOverlap(player, hz)) {
-          respawn();
+      player.onGround = grounded;
+
+      if (player.y > H + 240) damage('추락');
+
+      applyCheckpoint();
+    }
+
+    function updateHazards() {
+      for (const h of hazards) {
+        if (h.type === 'camera') {
+          h.t += 1;
+        }
+        if (h.type === 'spotlight') {
+          h.t += 1;
+          const ang = h.angle + Math.sin(h.t * h.speed * 60) * h.sweep;
+          const len = 300;
+          const ex = h.x + Math.cos(ang) * len;
+          const ey = h.y + Math.sin(ang) * len;
+          const px = player.x + player.w / 2;
+          const py = player.y + player.h / 2;
+          const near = dist(px, py, h.x, h.y) < len + 28;
+          if (near) {
+            const dot = ((px - h.x) * Math.cos(ang) + (py - h.y) * Math.sin(ang));
+            if (dot > 0) {
+              const perp = Math.abs((px - h.x) * Math.sin(ang) - (py - h.y) * Math.cos(ang));
+              const width = lerp(16, 86, dot / len);
+              if (perp < width && player.invuln <= 0) {
+                player.alert = clamp(player.alert + 1.25, 0, 100);
+              }
+            }
+          }
+        }
+        if (h.type === 'drone') {
+          h.t += 1;
+          h.y = h.baseY + Math.sin(h.t * h.speed * 60) * h.amp;
+          if (rectsOverlap(player, h)) damage('드론 충돌');
+          if (dist(player.x + player.w / 2, player.y + player.h / 2, h.x + h.w / 2, h.y + h.h / 2) < 86 && player.invuln <= 0) {
+            player.alert = clamp(player.alert + 0.4, 0, 100);
+          }
+        }
+        if (h.type === 'barrier' || h.type === 'camera') {
+          if (rectsOverlap(player, h)) damage(h.type === 'barrier' ? '바리케이드 충돌' : '감시카메라 충돌');
+        }
+        if (h.type === 'camera') {
+          const beamX = h.x + h.w / 2 + Math.sin(h.t * 0.04) * h.range;
+          const beamW = 60;
+          const zone = { x: beamX - beamW / 2, y: h.y + h.h, w: beamW, h: WORLD.groundY - (h.y + h.h) };
+          if (rectsOverlap(player, zone) && player.invuln <= 0) {
+            player.alert = clamp(player.alert + 0.8, 0, 100);
+          }
         }
       }
 
-      // Pit after wall if player falls badly
-      if (player.y > canvas.height + 200) {
-        respawn();
+      player.alert = clamp(player.alert - 0.12, 0, 100);
+      if (player.alert >= 100) damage('경보 발각');
+    }
+
+    function updatePickupsAndGoal() {
+      for (const p of pickups) {
+        if (p.taken) continue;
+        const px = player.x + player.w / 2;
+        const py = player.y + player.h / 2;
+        if (dist(px, py, p.x, p.y) < 22) {
+          p.taken = true;
+          player.fans += 1;
+          spawnBurst(p.x, p.y, 14, '#ffd966');
+          addFloat('+민심', p.x - 12, p.y - 12, '#ffe589');
+        }
       }
 
-      // Goal
-      if (player.x > WORLD.goalX && player.y + player.h <= WORLD.wallTop + 10) {
+      const goalRect = { x: WORLD.goalX, y: WORLD.wallTop - 24, w: 95, h: 42 };
+      if (rectsOverlap(player, goalRect)) {
         gameState = 'win';
         if (timer < bestTime) {
           bestTime = timer;
-          localStorage.setItem('assemblyWallBest', String(bestTime));
+          localStorage.setItem('assemblyWallDXBest', String(bestTime));
+        }
+        if (player.fans > bestFans) {
+          bestFans = player.fans;
+          localStorage.setItem('assemblyWallDXFans', String(bestFans));
         }
       }
+    }
 
-      cameraX = player.x - canvas.width * 0.35;
-      cameraX = Math.max(0, Math.min(WORLD.width - canvas.width, cameraX));
+    function updateEffects() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life -= 1;
+        p.vy += p.gravity;
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const f = floatingTexts[i];
+        f.life -= 1;
+        f.y -= 0.45;
+        if (f.life <= 0) floatingTexts.splice(i, 1);
+      }
+      screenShake = Math.max(0, screenShake * 0.84 - 0.15);
+      flash = Math.max(0, flash - 0.02);
+    }
+
+    function update() {
+      if (gameState !== 'playing') return;
+      timer += 1 / 60;
+      updatePlayer();
+      updateHazards();
+      updatePickupsAndGoal();
+      updateEffects();
+
+      const targetCam = clamp(player.x - W * 0.38, 0, WORLD.width - W);
+      cameraX = lerp(cameraX, targetCam, 0.12);
+    }
+
+    function withCamera(cb) {
+      const sx = (Math.random() - 0.5) * screenShake;
+      const sy = (Math.random() - 0.5) * screenShake;
+      ctx.save();
+      ctx.translate(sx, sy);
+      cb();
+      ctx.restore();
     }
 
     function roundRect(x, y, w, h, r) {
@@ -294,126 +603,274 @@
       ctx.closePath();
     }
 
-    function drawBackground() {
-      // Sky gradient
-      const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      g.addColorStop(0, '#b8dcff');
+    function drawSky() {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#97ccff');
+      g.addColorStop(0.55, '#eaf6ff');
       g.addColorStop(1, '#f7fbff');
       ctx.fillStyle = g;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, W, H);
 
-      // Clouds
-      for (let i = 0; i < 7; i++) {
-        const x = ((i * 260 - cameraX * 0.25) % 1500) - 120;
-        const y = 90 + (i % 3) * 45;
-        drawCloud(x, y, 0.9 + (i % 2) * 0.2);
+      // sun glow
+      const sg = ctx.createRadialGradient(1050, 110, 20, 1050, 110, 220);
+      sg.addColorStop(0, 'rgba(255, 245, 200, 0.85)');
+      sg.addColorStop(1, 'rgba(255, 245, 200, 0)');
+      ctx.fillStyle = sg;
+      ctx.fillRect(780, -80, 500, 420);
+
+      // far hills
+      ctx.fillStyle = '#b9d7bd';
+      for (let i = 0; i < 9; i++) {
+        const x = i * 260 - (cameraX * 0.10 % 260) - 100;
+        ctx.beginPath();
+        ctx.moveTo(x, 520);
+        ctx.quadraticCurveTo(x + 130, 410 - (i % 2) * 25, x + 260, 520);
+        ctx.lineTo(x + 260, H);
+        ctx.lineTo(x, H);
+        ctx.closePath();
+        ctx.fill();
       }
 
-      // Distant city
-      for (let i = 0; i < 16; i++) {
-        const x = i * 90 - (cameraX * 0.45 % 90);
-        const h = 120 + (i % 5) * 25;
-        ctx.fillStyle = '#99abc0';
-        ctx.fillRect(x, 350 - h, 60, h);
+      // city skyline
+      for (let i = 0; i < 26; i++) {
+        const x = i * 75 - (cameraX * 0.22 % 75);
+        const h = 120 + (i % 5) * 25 + ((i * 13) % 20);
+        ctx.fillStyle = i % 3 === 0 ? '#90a4ba' : '#a9bacb';
+        ctx.fillRect(x, 390 - h, 48, h);
+        ctx.fillStyle = 'rgba(255,255,210,0.35)';
+        for (let r = 0; r < 6; r++) ctx.fillRect(x + 8, 390 - h + 10 + r * 18, 30, 6);
       }
 
-      // Assembly dome + building
-      const bx = WORLD.domeX - cameraX;
-      ctx.fillStyle = '#d4dbe4';
-      ctx.fillRect(bx - 170, 390, 340, 150);
-      ctx.fillStyle = '#8eb845';
-      for (let i = 0; i < 12; i++) {
-        ctx.fillRect(bx - 148 + i * 28, 410, 14, 130);
-      }
-      ctx.beginPath();
-      ctx.arc(bx, 350, 90, Math.PI, 0);
-      ctx.closePath();
-      ctx.fillStyle = '#59a44e';
-      ctx.fill();
-      ctx.fillStyle = '#c4d2dd';
-      ctx.fillRect(bx - 120, 382, 240, 18);
+      drawCloudLayer(0.18, 7, 0.95, 78);
+      drawCloudLayer(0.31, 6, 1.15, 132);
+    }
 
-      // Grass
-      ctx.fillStyle = '#78b159';
-      ctx.fillRect(0, WORLD.groundY - 4, canvas.width, canvas.height - WORLD.groundY + 4);
-      ctx.fillStyle = '#66994c';
-      for (let i = 0; i < canvas.width; i += 22) {
-        ctx.fillRect(i, WORLD.groundY + (i % 3), 12, 5);
+    function drawCloudLayer(speed, count, scale, yBase) {
+      for (let i = 0; i < count; i++) {
+        const x = ((i * 250) - (cameraX * speed % (count * 250))) - 120;
+        const y = yBase + (i % 3) * 30;
+        drawCloud(x, y, scale + (i % 2) * 0.18);
       }
     }
 
     function drawCloud(x, y, s) {
-      ctx.fillStyle = 'rgba(255,255,255,0.82)';
+      ctx.fillStyle = 'rgba(255,255,255,0.80)';
       ctx.beginPath();
       ctx.arc(x, y, 28 * s, 0, Math.PI * 2);
-      ctx.arc(x + 30 * s, y - 10 * s, 24 * s, 0, Math.PI * 2);
-      ctx.arc(x + 56 * s, y, 28 * s, 0, Math.PI * 2);
-      ctx.arc(x + 26 * s, y + 10 * s, 30 * s, 0, Math.PI * 2);
+      ctx.arc(x + 32 * s, y - 12 * s, 26 * s, 0, Math.PI * 2);
+      ctx.arc(x + 66 * s, y - 2 * s, 30 * s, 0, Math.PI * 2);
+      ctx.arc(x + 34 * s, y + 12 * s, 32 * s, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    function drawGroundElements() {
-      // Benches
-      for (const b of benches) {
-        const x = b.x - cameraX;
-        ctx.fillStyle = '#8f5b2e';
-        ctx.fillRect(x, b.y, b.w, b.h);
-        ctx.fillRect(x + 10, b.y + b.h, 10, 20);
-        ctx.fillRect(x + b.w - 20, b.y + b.h, 10, 20);
+    function drawAssembly() {
+      const bx = WORLD.domeX - cameraX;
+      // main building
+      ctx.fillStyle = '#d9e2ec';
+      ctx.fillRect(bx - 210, 420, 420, 140);
+      ctx.fillStyle = '#c2ced9';
+      ctx.fillRect(bx - 230, 404, 460, 20);
+      ctx.fillRect(bx - 160, 560, 320, 22);
+      // columns
+      for (let i = 0; i < 12; i++) {
+        ctx.fillStyle = i % 2 ? '#8db345' : '#79a33b';
+        ctx.fillRect(bx - 165 + i * 28, 435, 16, 125);
       }
+      // dome
+      ctx.beginPath();
+      ctx.arc(bx, 386, 118, Math.PI, 0);
+      ctx.closePath();
+      ctx.fillStyle = '#4fa349';
+      ctx.fill();
+      ctx.fillStyle = '#6db857';
+      ctx.beginPath();
+      ctx.arc(bx, 386, 90, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#89ca74';
+      ctx.beginPath();
+      ctx.arc(bx, 386, 58, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
 
-      // Hazards
-      for (const hz of hazards) {
-        const x = hz.x - cameraX;
-        if (hz.type === 'barrier') {
-          ctx.fillStyle = '#d64545';
-          ctx.fillRect(x, hz.y, hz.w, hz.h);
-          ctx.fillStyle = '#ffffff';
-          for (let i = 0; i < hz.w; i += 14) ctx.fillRect(x + i, hz.y + 7, 7, 8);
-        } else if (hz.type === 'camera') {
-          ctx.fillStyle = '#4b5563';
-          ctx.fillRect(x + 18, hz.y - 18, 12, hz.h + 18);
-          ctx.fillStyle = '#222';
-          ctx.fillRect(x, hz.y, hz.w, hz.h);
-          ctx.fillStyle = '#7dd3fc';
-          ctx.fillRect(x + 10, hz.y + 10, hz.w - 20, 10);
-        } else if (hz.type === 'spotlight') {
-          ctx.fillStyle = '#444';
-          ctx.fillRect(x + hz.w/2 - 6, hz.y - 50, 12, 50);
-          ctx.beginPath();
-          ctx.moveTo(x + hz.w/2, hz.y - 50);
-          ctx.lineTo(x + hz.w/2 - 60, hz.y + hz.h);
-          ctx.lineTo(x + hz.w/2 + 60, hz.y + hz.h);
-          ctx.closePath();
-          ctx.fillStyle = 'rgba(255, 244, 180, 0.35)';
-          ctx.fill();
-        }
+    function drawGround() {
+      ctx.fillStyle = palette.grass;
+      ctx.fillRect(0, WORLD.groundY, W, H - WORLD.groundY);
+      ctx.fillStyle = palette.grassDark;
+      for (let i = 0; i < W + 30; i += 18) {
+        ctx.fillRect(i, WORLD.groundY + (i % 5), 9, 5);
       }
+      // plaza path
+      ctx.fillStyle = '#cdd5df';
+      ctx.fillRect(0, WORLD.groundY - 12, W, 18);
+    }
 
-      // Wall
+    function drawPlatform(p) {
+      const x = p.x - cameraX;
+      if (x + p.w < -120 || x > W + 120) return;
+      if (p.style === 'bench') {
+        ctx.fillStyle = '#8b5a2b';
+        ctx.fillRect(x, p.y, p.w, p.h);
+        ctx.fillRect(x + 10, p.y + p.h, 10, 18);
+        ctx.fillRect(x + p.w - 20, p.y + p.h, 10, 18);
+        ctx.fillStyle = '#5c3616';
+        ctx.fillRect(x, p.y - 6, p.w, 6);
+      } else if (p.style === 'railing') {
+        ctx.fillStyle = '#4b5563';
+        ctx.fillRect(x, p.y, p.w, p.h);
+        for (let i = 10; i < p.w - 10; i += 18) ctx.fillRect(x + i, p.y - 22, 4, 22);
+        ctx.fillStyle = '#9aa4b2';
+        ctx.fillRect(x, p.y - 26, p.w, 6);
+      } else if (p.style === 'truck') {
+        ctx.fillStyle = '#2563eb';
+        roundRect(x, p.y - 32, p.w, 32, 10);
+        ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath(); ctx.arc(x + 24, p.y + 4, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + p.w - 24, p.y + 4, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#bfdbfe';
+        ctx.fillRect(x + 12, p.y - 24, 40, 16);
+      } else if (p.style === 'cameraBox') {
+        ctx.fillStyle = '#374151';
+        ctx.fillRect(x, p.y - 18, p.w, 18);
+        ctx.fillRect(x + 14, p.y - 42, p.w - 28, 24);
+        ctx.fillStyle = '#7dd3fc';
+        ctx.fillRect(x + 22, p.y - 35, p.w - 44, 10);
+      } else if (p.style === 'ledge' || p.style === 'goal') {
+        ctx.fillStyle = p.style === 'goal' ? '#f59e0b' : '#64748b';
+        ctx.fillRect(x, p.y, p.w, p.h);
+        ctx.fillStyle = p.style === 'goal' ? '#fde68a' : '#94a3b8';
+        ctx.fillRect(x, p.y, p.w, 4);
+      }
+    }
+
+    function drawHazard(h) {
+      const x = h.x - cameraX;
+      if (h.type === 'barrier') {
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(x, h.y, h.w, h.h);
+        ctx.fillStyle = '#fff';
+        for (let i = 0; i < h.w; i += 16) ctx.fillRect(x + i, h.y + 8, 8, 8);
+      } else if (h.type === 'camera') {
+        ctx.fillStyle = '#3f4754';
+        ctx.fillRect(x, h.y, h.w, h.h);
+        ctx.fillRect(x + 18, h.y - 18, 20, 18);
+        ctx.fillStyle = '#8ed7ff';
+        ctx.fillRect(x + 10, h.y + 12, h.w - 20, 10);
+        const beamX = x + h.w / 2 + Math.sin(h.t * 0.04) * h.range;
+        const grad = ctx.createLinearGradient(beamX, h.y + h.h, beamX, WORLD.groundY + 120);
+        grad.addColorStop(0, 'rgba(255,245,180,0.32)');
+        grad.addColorStop(1, 'rgba(255,245,180,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(beamX - 20, h.y + h.h);
+        ctx.lineTo(beamX + 20, h.y + h.h);
+        ctx.lineTo(beamX + 55, WORLD.groundY);
+        ctx.lineTo(beamX - 55, WORLD.groundY);
+        ctx.closePath();
+        ctx.fill();
+      } else if (h.type === 'spotlight') {
+        ctx.fillStyle = '#4b5563';
+        ctx.fillRect(x - 5, h.y, 10, h.h);
+        ctx.fillStyle = '#1f2937';
+        ctx.beginPath();
+        ctx.arc(x, h.y, 18, 0, Math.PI * 2);
+        ctx.fill();
+        const ang = h.angle + Math.sin(h.t * h.speed * 60) * h.sweep;
+        const len = 300;
+        const ex = x + Math.cos(ang) * len;
+        const ey = h.y + Math.sin(ang) * len;
+        const grad = ctx.createRadialGradient(x, h.y, 8, x, h.y, len);
+        grad.addColorStop(0, 'rgba(255,249,194,0.48)');
+        grad.addColorStop(1, 'rgba(255,249,194,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(x, h.y);
+        ctx.lineTo(x + Math.cos(ang - 0.22) * len, h.y + Math.sin(ang - 0.22) * len);
+        ctx.lineTo(x + Math.cos(ang + 0.22) * len, h.y + Math.sin(ang + 0.22) * len);
+        ctx.closePath();
+        ctx.fill();
+      } else if (h.type === 'drone') {
+        ctx.fillStyle = '#1f2937';
+        roundRect(x, h.y, h.w, h.h, 10);
+        ctx.fill();
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(x + 14, h.y + 6, h.w - 28, 6);
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x + 6, h.y + 2); ctx.lineTo(x - 12, h.y - 12);
+        ctx.moveTo(x + h.w - 6, h.y + 2); ctx.lineTo(x + h.w + 12, h.y - 12);
+        ctx.moveTo(x + 6, h.y + h.h - 2); ctx.lineTo(x - 12, h.y + h.h + 12);
+        ctx.moveTo(x + h.w - 6, h.y + h.h - 2); ctx.lineTo(x + h.w + 12, h.y + h.h + 12);
+        ctx.stroke();
+      }
+    }
+
+    function drawPickups() {
+      for (const p of pickups) {
+        if (p.taken) continue;
+        const x = p.x - cameraX;
+        if (x < -40 || x > W + 40) continue;
+        const pulse = 1 + Math.sin((timer * 4) + p.x * 0.02) * 0.08;
+        ctx.save();
+        ctx.translate(x, p.y);
+        ctx.scale(pulse, pulse);
+        ctx.fillStyle = '#ffd84f';
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff4b0';
+        ctx.beginPath();
+        ctx.arc(-3, -3, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#8b5cf6';
+        ctx.font = 'bold 11px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('票', 0, 4);
+        ctx.restore();
+      }
+    }
+
+    function drawCheckpoints() {
+      for (const c of checkpoints) {
+        const x = c.x - cameraX;
+        ctx.fillStyle = c.active ? '#14b8a6' : '#64748b';
+        ctx.fillRect(x, c.y - 80, 6, 80);
+        ctx.fillStyle = c.active ? '#5eead4' : '#cbd5e1';
+        ctx.beginPath();
+        ctx.moveTo(x + 6, c.y - 80);
+        ctx.lineTo(x + 40, c.y - 68);
+        ctx.lineTo(x + 6, c.y - 56);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    function drawWallAndGoal() {
       const wx = WORLD.wallX - cameraX;
-      ctx.fillStyle = '#8a8f98';
+      ctx.fillStyle = palette.stone;
       ctx.fillRect(wx, WORLD.wallTop, WORLD.wallW, WORLD.wallH);
-      ctx.fillStyle = '#777d87';
-      for (let y = WORLD.wallTop + 10; y < WORLD.groundY; y += 22) {
-        ctx.fillRect(wx + 5, y, WORLD.wallW - 10, 8);
+      ctx.fillStyle = palette.stoneDark;
+      for (let y = WORLD.wallTop + 10; y < WORLD.groundY; y += 24) {
+        ctx.fillRect(wx + 6, y, WORLD.wallW - 12, 9);
       }
-      ctx.fillStyle = '#6b7280';
-      ctx.fillRect(wx - 20, WORLD.wallTop - 8, WORLD.wallW + 40, 10);
+      ctx.fillStyle = '#606775';
+      ctx.fillRect(wx - 24, WORLD.wallTop - 8, WORLD.wallW + 48, 12);
 
-      // Goal marker
       const gx = WORLD.goalX - cameraX;
-      ctx.strokeStyle = '#111827';
+      ctx.strokeStyle = '#0f172a';
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(gx, WORLD.wallTop - 70);
-      ctx.lineTo(gx, WORLD.wallTop);
+      ctx.moveTo(gx, WORLD.wallTop - 76);
+      ctx.lineTo(gx, WORLD.wallTop - 2);
       ctx.stroke();
-      ctx.fillStyle = '#ef4444';
+      ctx.fillStyle = '#dc2626';
       ctx.beginPath();
-      ctx.moveTo(gx, WORLD.wallTop - 70);
-      ctx.lineTo(gx + 40, WORLD.wallTop - 55);
-      ctx.lineTo(gx, WORLD.wallTop - 40);
+      ctx.moveTo(gx, WORLD.wallTop - 76);
+      ctx.lineTo(gx + 42, WORLD.wallTop - 60);
+      ctx.lineTo(gx, WORLD.wallTop - 44);
       ctx.closePath();
       ctx.fill();
     }
@@ -422,137 +879,281 @@
       const x = player.x - cameraX;
       const y = player.y;
 
-      // Shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      if (player.dashTime > 0) {
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = `rgba(147,197,253,${0.16 - i * 0.03})`;
+          roundRect(x - player.facing * i * 12, y + 3, player.w, player.h - 3, 12);
+          ctx.fill();
+        }
+      }
+
+      ctx.fillStyle = 'rgba(0,0,0,0.16)';
       ctx.beginPath();
-      ctx.ellipse(x + player.w / 2, WORLD.groundY + 4, 18, 6, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + player.w / 2, WORLD.groundY + 7, 18, 6, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Body
-      ctx.fillStyle = '#1f4c8f';
+      if (player.invuln > 0 && Math.floor(player.invuln / 4) % 2 === 0) return;
+
+      // suit
+      ctx.fillStyle = '#173b73';
       roundRect(x + 5, y + 18, 24, 28, 8);
       ctx.fill();
 
-      // Head
-      ctx.fillStyle = '#f1c27d';
-      ctx.beginPath();
-      ctx.arc(x + 17, y + 12, 11, 0, Math.PI * 2);
-      ctx.fill();
+      // shirt
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(x + 12, y + 19, 10, 24);
 
-      // Hair
-      ctx.fillStyle = '#2f2b2a';
+      // tie
+      ctx.fillStyle = '#e11d48';
       ctx.beginPath();
-      ctx.arc(x + 17, y + 9, 11, Math.PI, 0);
-      ctx.fill();
-
-      // Legs
-      ctx.strokeStyle = '#222';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(x + 12, y + 46);
-      ctx.lineTo(x + 10 + Math.sin(timer * 8) * 4, y + 58);
-      ctx.moveTo(x + 22, y + 46);
-      ctx.lineTo(x + 24 - Math.sin(timer * 8) * 4, y + 58);
-      ctx.stroke();
-
-      // Arms
-      ctx.beginPath();
-      ctx.moveTo(x + 5, y + 30);
-      ctx.lineTo(x - 2 + player.facing * 2, y + 40);
-      ctx.moveTo(x + 29, y + 30);
-      ctx.lineTo(x + 36 + player.facing * 3, y + 40);
-      ctx.stroke();
-
-      // Tie
-      ctx.fillStyle = '#dc2626';
-      ctx.beginPath();
-      ctx.moveTo(x + 17, y + 22);
+      ctx.moveTo(x + 17, y + 21);
       ctx.lineTo(x + 13, y + 35);
       ctx.lineTo(x + 21, y + 35);
       ctx.closePath();
       ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x + 17, y + 35);
+      ctx.lineTo(x + 14, y + 46);
+      ctx.lineTo(x + 20, y + 46);
+      ctx.closePath();
+      ctx.fill();
+
+      // head
+      ctx.fillStyle = '#f2c58a';
+      ctx.beginPath();
+      ctx.arc(x + 17, y + 12, 11, 0, Math.PI * 2);
+      ctx.fill();
+
+      // hair
+      ctx.fillStyle = '#232323';
+      ctx.beginPath();
+      ctx.arc(x + 17, y + 10, 11, Math.PI, -0.1);
+      ctx.fill();
+
+      // face
+      ctx.fillStyle = '#1f2937';
+      ctx.fillRect(x + 13, y + 11, 2, 2);
+      ctx.fillRect(x + 19, y + 11, 2, 2);
+
+      // arms and legs
+      const walk = Math.sin(timer * 10 + player.x * 0.03) * (player.onGround ? 1 : 0.2);
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(x + 7, y + 30);
+      ctx.lineTo(x + 1 - walk * 3, y + 39);
+      ctx.moveTo(x + 27, y + 30);
+      ctx.lineTo(x + 33 + walk * 3, y + 39);
+      ctx.moveTo(x + 13, y + 46);
+      ctx.lineTo(x + 10 + walk * 4, y + 58);
+      ctx.moveTo(x + 21, y + 46);
+      ctx.lineTo(x + 24 - walk * 4, y + 58);
+      ctx.stroke();
+
+      // megaphone during dash
+      if (player.dashTime > 0) {
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.moveTo(x + (player.facing === 1 ? 30 : 4), y + 28);
+        ctx.lineTo(x + (player.facing === 1 ? 42 : -8), y + 24);
+        ctx.lineTo(x + (player.facing === 1 ? 42 : -8), y + 32);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    function drawParticlesAndTexts() {
+      for (const p of particles) {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = clamp(p.life / p.maxLife, 0, 1);
+        ctx.fillRect(p.x - cameraX, p.y, p.size, p.size);
+        ctx.globalAlpha = 1;
+      }
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 18px system-ui';
+      for (const f of floatingTexts) {
+        ctx.globalAlpha = clamp(f.life / 60, 0, 1);
+        ctx.fillStyle = f.color;
+        ctx.fillText(f.text, f.x - cameraX, f.y);
+        ctx.globalAlpha = 1;
+      }
     }
 
     function drawHUD() {
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      roundRect(20, 20, 260, 88, 18);
+      // top-left card
+      ctx.fillStyle = 'rgba(255,255,255,0.80)';
+      roundRect(22, 18, 315, 126, 20);
       ctx.fill();
 
-      ctx.fillStyle = '#111827';
-      ctx.font = 'bold 22px system-ui';
-      ctx.fillText('담 넘기 작전', 36, 52);
-      ctx.font = '16px system-ui';
-      ctx.fillText(`현재 기록: ${timer.toFixed(2)}초`, 36, 78);
-      ctx.fillText(`최고 기록: ${bestTime === 9999 ? '-' : bestTime.toFixed(2) + '초'}`, 36, 100);
-    }
-
-    function drawTitleScreen() {
-      drawBackground();
-      drawGroundElements();
-
-      ctx.fillStyle = 'rgba(9, 16, 32, 0.55)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 54px system-ui';
-      ctx.fillText('국회의사당 담 넘기', canvas.width / 2, 190);
-      ctx.font = '24px system-ui';
-      ctx.fillText('브라우저에서 바로 실행되는 풍자용 2D 미니게임', canvas.width / 2, 240);
-
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      roundRect(canvas.width / 2 - 245, 300, 490, 190, 22);
-      ctx.fill();
-
-      ctx.fillStyle = '#111827';
+      ctx.fillStyle = palette.ink;
       ctx.font = 'bold 26px system-ui';
-      ctx.fillText('목표', canvas.width / 2, 348);
-      ctx.font = '20px system-ui';
-      ctx.fillText('장애물을 피해 달려가 담을 타고 정상에 도달하세요.', canvas.width / 2, 390);
-      ctx.fillText('빨간 깃발 지점에 서면 클리어입니다.', canvas.width / 2, 425);
-      ctx.fillText('시작: Space 또는 Enter', canvas.width / 2, 465);
+      ctx.fillText('담 넘기 DX', 42, 50);
+      ctx.font = '16px system-ui';
+      ctx.fillText(`시간 ${timer.toFixed(2)}초`, 42, 78);
+      ctx.fillText(`최고 ${bestTime === 99999 ? '-' : bestTime.toFixed(2) + '초'}`, 42, 100);
+      ctx.fillText(`민심 ${player.fans} / ${pickups.length}`, 42, 122);
+
+      // hearts
+      for (let i = 0; i < 3; i++) {
+        const hx = 240 + i * 26;
+        const hy = 54;
+        ctx.fillStyle = i < player.lives ? '#ef4444' : '#cbd5e1';
+        ctx.beginPath();
+        ctx.arc(hx - 6, hy, 6, 0, Math.PI * 2);
+        ctx.arc(hx + 6, hy, 6, 0, Math.PI * 2);
+        ctx.lineTo(hx, hy + 16);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // energy
+      drawBar(365, 25, 240, 22, player.energy / player.maxEnergy, '#22c55e', '#cbd5e1', '벽타기 스태미나');
+      // alert
+      drawBar(365, 63, 240, 22, player.alert / 100, '#ef4444', '#cbd5e1', '경보 수치');
+      // dash cooldown
+      drawBar(365, 101, 240, 18, 1 - player.dashCooldown / 48, '#60a5fa', '#dbeafe', '대시');
+
+      // progress
+      const prog = clamp((player.x - 120) / (WORLD.goalX - 120), 0, 1);
+      ctx.fillStyle = 'rgba(10,18,35,0.14)';
+      roundRect(635, 26, 618, 26, 13);
+      ctx.fill();
+      ctx.fillStyle = '#60a5fa';
+      roundRect(639, 30, 610 * prog, 18, 9);
+      ctx.fill();
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 14px system-ui';
+      ctx.fillText('진행도', 646, 45);
+      ctx.textAlign = 'right';
+      ctx.fillText(`${Math.round(prog * 100)}%`, 1238, 45);
+      ctx.textAlign = 'left';
+
+      // tips in-play
+      if (timer < 8) {
+        ctx.fillStyle = 'rgba(10,18,35,0.68)';
+        roundRect(22, 158, 352, 74, 18);
+        ctx.fill();
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = '15px system-ui';
+        ctx.fillText('민심 토큰을 모으면 기록 외에 수집 점수도 남습니다.', 42, 188);
+        ctx.fillText('탐지광에 오래 있으면 경보가 차오르니 대시로 빠져나가세요.', 42, 214);
+      }
     }
 
-    function drawWinScreen() {
-      ctx.fillStyle = 'rgba(0,0,0,0.38)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = 'rgba(255,255,255,0.94)';
-      roundRect(canvas.width / 2 - 250, 180, 500, 240, 24);
+    function drawBar(x, y, w, h, ratio, fg, bg, label) {
+      ctx.fillStyle = 'rgba(255,255,255,0.82)';
+      roundRect(x - 4, y - 4, w + 8, h + 8, 14);
       ctx.fill();
+      ctx.fillStyle = bg;
+      roundRect(x, y, w, h, 10);
+      ctx.fill();
+      ctx.fillStyle = fg;
+      roundRect(x, y, w * clamp(ratio, 0, 1), h, 10);
+      ctx.fill();
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '12px system-ui';
+      ctx.fillText(label, x + 8, y + h - 6);
+    }
+
+    function drawTitle() {
+      drawSky();
+      drawAssembly();
+      drawGround();
+      drawWallAndGoal();
+      for (const p of platforms) drawPlatform(p);
+      for (const h of hazards) drawHazard(h);
+      drawPickups();
+      drawCheckpoints();
+
+      ctx.fillStyle = 'rgba(8, 15, 28, 0.45)';
+      ctx.fillRect(0, 0, W, H);
+
+      const g = ctx.createLinearGradient(0, 120, 0, 280);
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(1, '#dbeafe');
+      ctx.fillStyle = g;
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#111827';
-      ctx.font = 'bold 48px system-ui';
-      ctx.fillText('클리어!', canvas.width / 2, 255);
-      ctx.font = '24px system-ui';
-      ctx.fillText(`기록: ${timer.toFixed(2)}초`, canvas.width / 2, 310);
-      ctx.fillText(`최고 기록: ${bestTime.toFixed(2)}초`, canvas.width / 2, 348);
+      ctx.font = 'bold 68px system-ui';
+      ctx.fillText('국회의사당 담 넘기 DX', W / 2, 170);
+      ctx.font = '22px system-ui';
+      ctx.fillText('풍자용 가상 2D 액션 플랫포머', W / 2, 212);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      roundRect(W / 2 - 340, 255, 680, 250, 28);
+      ctx.fill();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 28px system-ui';
+      ctx.fillText('강화된 요소', W / 2, 304);
       ctx.font = '20px system-ui';
-      ctx.fillText('R 키를 누르면 다시 시작합니다.', canvas.width / 2, 388);
+      ctx.fillText('더블 점프 · 대시 · 벽타기 스태미나 · 체크포인트 · 탐지 경보', W / 2, 352);
+      ctx.fillText('드론 · 스포트라이트 · 수집형 민심 토큰 · 최고 기록 저장', W / 2, 390);
+      ctx.fillText('진행도 HUD · 파티클 · 화면 흔들림 · 다층 배경 연출', W / 2, 428);
+      ctx.font = 'bold 22px system-ui';
+      ctx.fillText('시작하려면 Space 또는 Enter', W / 2, 474);
+
       ctx.textAlign = 'left';
     }
 
-    function draw() {
-      if (gameState === 'title') {
-        drawTitleScreen();
-        return;
-      }
-
-      drawBackground();
-      drawGroundElements();
-      drawPlayer();
-      drawHUD();
-
-      if (gameState === 'win') drawWinScreen();
+    function drawWin() {
+      ctx.fillStyle = 'rgba(8, 15, 28, 0.40)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      roundRect(W / 2 - 300, 180, 600, 270, 26);
+      ctx.fill();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 52px system-ui';
+      ctx.fillText('클리어!', W / 2, 250);
+      ctx.font = '24px system-ui';
+      ctx.fillText(`기록 ${timer.toFixed(2)}초`, W / 2, 308);
+      ctx.fillText(`민심 ${player.fans} / ${pickups.length}`, W / 2, 344);
+      ctx.fillText(`최고 기록 ${bestTime.toFixed(2)}초 · 최고 민심 ${bestFans}`, W / 2, 380);
+      ctx.font = '20px system-ui';
+      ctx.fillText('Space / Enter 또는 R 로 다시 시작', W / 2, 420);
+      ctx.textAlign = 'left';
     }
 
-    function loop() {
-      update();
+    function drawFlash() {
+      if (flash <= 0) return;
+      ctx.fillStyle = `rgba(255,255,255,${flash})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    function draw() {
+      withCamera(() => {
+        drawSky();
+        drawAssembly();
+        drawGround();
+        for (const p of platforms) drawPlatform(p);
+        drawCheckpoints();
+        drawWallAndGoal();
+        for (const h of hazards) drawHazard(h);
+        drawPickups();
+        if (gameState !== 'title') drawPlayer();
+        drawParticlesAndTexts();
+      });
+
+      if (gameState === 'title') {
+        drawTitle();
+      } else {
+        drawHUD();
+      }
+      if (gameState === 'win') drawWin();
+      drawFlash();
+    }
+
+    function loop(ts) {
+      if (!lastTime) lastTime = ts;
+      const delta = ts - lastTime;
+      lastTime = ts;
+      const steps = Math.min(3, Math.max(1, Math.round(delta / 16.67)));
+      for (let i = 0; i < steps; i++) update();
       draw();
       requestAnimationFrame(loop);
     }
 
-    player.y = WORLD.groundY - player.h;
-    loop();
-  </script>
-</body>
+    draw();
+    requestAnimationFrame(loop);
+  </script></body>
 </html>
